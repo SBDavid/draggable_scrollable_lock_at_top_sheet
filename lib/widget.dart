@@ -4,6 +4,8 @@
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/physics.dart';
 
 /// The signature of a method that provides a [BuildContext] and
 /// [ScrollController] for building a widget that may overflow the draggable
@@ -80,12 +82,12 @@ typedef ShouldLockAtTop = bool Function();
 /// }
 /// ```
 /// {@end-tool}
-class DraggableScrollableSheet extends StatefulWidget {
+class DraggableScrollableSheetLockAtTop extends StatefulWidget {
   /// Creates a widget that can be dragged and scrolled in a single gesture.
   ///
   /// The [builder], [initialChildSize], [minChildSize], [maxChildSize] and
   /// [expand] parameters must not be null.
-  const DraggableScrollableSheet({
+  const DraggableScrollableSheetLockAtTop({
     Key key,
     this.initialChildSize = 0.5,
     this.minChildSize = 0.25,
@@ -163,13 +165,13 @@ class DraggableScrollableSheet extends StatefulWidget {
 /// notifications are used primarily to drive animations. The [Scaffold] widget
 /// listens for extent notifications and responds by driving animations for the
 /// [FloatingActionButton] as the bottom sheet scrolls up.
-class DraggableScrollableNotification extends Notification with ViewportNotificationMixin {
+class DraggableScrollableLockAtTopNotification extends Notification with ViewportNotificationMixin {
   /// Creates a notification that the extent of a [DraggableScrollableSheet] has
   /// changed.
   ///
   /// All parameters are required. The [minExtent] must be >= 0.  The [maxExtent]
   /// must be <= 1.0.  The [extent] must be between [minExtent] and [maxExtent].
-  DraggableScrollableNotification({
+  DraggableScrollableLockAtTopNotification({
     @required this.extent,
     @required this.minExtent,
     @required this.maxExtent,
@@ -265,7 +267,7 @@ class _DraggableSheetExtent {
       return;
     }
     currentExtent += delta / availablePixels * maxExtent;
-    DraggableScrollableNotification(
+    DraggableScrollableLockAtTopNotification(
       minExtent: minExtent,
       maxExtent: maxExtent,
       extent: currentExtent,
@@ -275,9 +277,12 @@ class _DraggableSheetExtent {
   }
 }
 
-class _DraggableScrollableSheetState extends State<DraggableScrollableSheet> {
+class _DraggableScrollableSheetState extends State<DraggableScrollableSheetLockAtTop> with TickerProviderStateMixin {
   _DraggableScrollableSheetScrollController _scrollController;
   _DraggableSheetExtent _extent;
+
+  // 动画回调控制
+  Ticker _ticker;
 
   @override
   void initState() {
@@ -288,7 +293,7 @@ class _DraggableScrollableSheetState extends State<DraggableScrollableSheet> {
       initialExtent: widget.initialChildSize,
       listener: _setExtent,
     );
-    _scrollController = _DraggableScrollableSheetScrollController(extent: _extent);
+    _scrollController = _DraggableScrollableSheetScrollController(extent: _extent, shouldLockAtTop: widget.shouldLockAtTop);
   }
 
   @override
@@ -316,16 +321,67 @@ class _DraggableScrollableSheetState extends State<DraggableScrollableSheet> {
 
   }
 
+  Function _createTicker(double startPosition, double endPosition, double startVelocity, double endVelocity) {
+    FrictionSimulation simulation = FrictionSimulation.through(startPosition, endPosition, startVelocity, endVelocity);
+
+    return (Duration elapsed) {
+
+      if (simulation.isDone(elapsed.inMilliseconds.toDouble()/1000)) {
+        _ticker?.stop(canceled: false);
+        return;
+      }
+
+      double x = simulation.x(elapsed.inMilliseconds.toDouble()/1000);
+      double cx = _extent.currentExtent * _extent.availablePixels;
+      _extent.addPixelDelta(x -cx, (_scrollController.position as _DraggableScrollableSheetScrollPosition).context.notificationContext);
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         _extent.availablePixels = widget.maxChildSize * constraints.biggest.height;
-        final Widget sheet = FractionallySizedBox(
+        Widget sheet = FractionallySizedBox(
           heightFactor: _extent.currentExtent,
           child: widget.builder(context, _scrollController),
           alignment: Alignment.bottomCenter,
         );
+
+        sheet = GestureDetector(
+          onVerticalDragDown: (_) {
+            _ticker?.stop(canceled: true);
+            (_scrollController.position as ScrollPositionWithSingleContext).goIdle();
+          },
+          onVerticalDragUpdate: (DragUpdateDetails details) {
+            _ticker?.stop(canceled: true);
+            _extent.addPixelDelta(-details.delta.dy, (_scrollController.position as _DraggableScrollableSheetScrollPosition).context.notificationContext);
+          },
+          onVerticalDragEnd: (DragEndDetails details) {
+
+
+            if (details.primaryVelocity == 0)
+              return;
+
+            double startPosition = _extent.availablePixels * _extent.currentExtent;
+            double endPosition = 0;
+            double endV = 10;
+            if (details.primaryVelocity < 0) { // 上
+              endPosition = _extent.availablePixels * _extent.maxExtent;
+              endV = 10;
+            } else {
+              endPosition = _extent.availablePixels * _extent.minExtent;
+              endV = -10;
+            }
+
+            if (startPosition == endPosition) return;
+
+            _ticker = this.createTicker(_createTicker(startPosition, endPosition, -details.primaryVelocity, endV));
+            _ticker.start();
+          },
+          child: sheet,
+        );
+
         return widget.expand ? SizedBox.expand(child: sheet) : sheet;
       },
     );
@@ -356,6 +412,7 @@ class _DraggableScrollableSheetScrollController extends ScrollController {
   _DraggableScrollableSheetScrollController({
     double initialScrollOffset = 0.0,
     String debugLabel,
+    this.shouldLockAtTop,
     @required this.extent,
   }) : assert(extent != null),
         super(
@@ -364,6 +421,8 @@ class _DraggableScrollableSheetScrollController extends ScrollController {
       );
 
   final _DraggableSheetExtent extent;
+
+  final ShouldLockAtTop shouldLockAtTop;
 
   @override
   _DraggableScrollableSheetScrollPosition createScrollPosition(
@@ -376,6 +435,7 @@ class _DraggableScrollableSheetScrollController extends ScrollController {
       context: context,
       oldPosition: oldPosition,
       extent: extent,
+      shouldLockAtTop: shouldLockAtTop
     );
   }
 
@@ -407,6 +467,7 @@ class _DraggableScrollableSheetScrollPosition
     bool keepScrollOffset = true,
     ScrollPosition oldPosition,
     String debugLabel,
+    this.shouldLockAtTop,
     @required this.extent,
   })  : assert(extent != null),
         super(
@@ -420,7 +481,24 @@ class _DraggableScrollableSheetScrollPosition
 
   VoidCallback _dragCancelCallback;
   final _DraggableSheetExtent extent;
-  bool get listShouldScroll => pixels > 0.0;
+
+  bool lockAtTop = false;
+  final ShouldLockAtTop shouldLockAtTop;
+
+  bool get listShouldScroll {
+
+    if (lockAtTop && extent.isAtMax) {
+      if (!shouldLockAtTop()) {
+        lockAtTop = false;
+      }
+      return true;
+    } else if (pixels > 0 && extent.isAtMax) {
+      lockAtTop = true;
+      return true;
+    } else {
+      return false;
+    }
+  }
 
   @override
   bool applyContentDimensions(double minScrollExtent, double maxScrollExtent) {
