@@ -1,8 +1,8 @@
 name: draggable_scrollable_lock_at_top_sheet
 description: A new Flutter package project.
 version: 1.0.0
-author:
-homepage:
+author: DavidTang <billl89g@gmail.com>
+homepage: https://github.com/SBDavid/draggable_scrollable_lock_at_top_sheet
 
 environment:
   sdk: ">=2.1.0 <3.0.0"
