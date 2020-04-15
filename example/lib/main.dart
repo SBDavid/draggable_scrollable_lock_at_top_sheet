@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:draggable_scrollable_lock_at_top_sheet/draggable_scrollable_lock_at_top_sheet.dart';
+import 'package:flutter_sliver_tracker/flutter_sliver_tracker.dart';
 
 void main() => runApp(MyApp());
 
@@ -31,8 +32,10 @@ class _MyHomePageState extends State<MyHomePage> {
   // 导航栏颜色
   Color appBarColor = Colors.blue.withOpacity(0);
   // 当前页码
-  int currentPageNum = 3;
+  int currentPageNumUP = 3;
+  int currentPageNumDown = 3;
   int pageSize = 10;
+  int pageAmount = 5;
   static const double PIC_HEIGHT = 200;
   // 列表项
   List<int> items;
@@ -55,9 +58,9 @@ class _MyHomePageState extends State<MyHomePage> {
         children: <Widget>[
           Container(
             child: RaisedButton(
-              child: Text("这个区域可以出发点击事件 当前页码：$currentPageNum"),
+              child: Text("这个区域可以出发点击事件 当前页码：$currentPageNumUP / $currentPageNumDown"),
               onPressed: () {
-                print("当前页码：$currentPageNum");
+                print("当前页码：$currentPageNumUP");
               },
             ),
           ),
@@ -84,7 +87,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     initialChildSize: minChildSize,
                     // 判断是否加载到第一页
                     shouldLockAtTop: () {
-                      return currentPageNum != 0;
+                      return currentPageNumUP != 1;
                     },
                     builder: (BuildContext context,
                         ScrollController scrollController) {
@@ -99,35 +102,77 @@ class _MyHomePageState extends State<MyHomePage> {
                           Expanded(
                             child: Container(
                               color: Colors.indigo,
-                              child: CustomScrollView(
-                                physics: BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                                controller: scrollController,
-                                slivers: <Widget>[
-                                  // 下拉加载更多，可以使用别的方式加载更多，这里只做演示。
-                                  CupertinoSliverRefreshControl(
-                                    onRefresh: () async {
-                                      Future.delayed(Duration(seconds: 1), () async {
-                                        if (currentPageNum > 0) {
-                                          currentPageNum--;
-                                          for(int i=0; i<pageSize; i++) {
-                                            items.insert(0, 1);
+                              child: ScrollViewListener(
+                                child: CustomScrollView(
+                                  physics: BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                                  controller: scrollController,
+                                  slivers: <Widget>[
+                                    // 下拉加载更多，可以使用别的方式加载更多，这里只做演示。
+                                    CupertinoSliverRefreshControl(
+                                      onRefresh: () async {
+                                        Future.delayed(Duration(seconds: 1), () async {
+                                          if (currentPageNumUP > 1) {
+                                            currentPageNumUP--;
+                                            for(int i=0; i<pageSize; i++) {
+                                              items.insert(0, 1);
+                                            }
                                           }
-                                        }
-                                        setState(() {
+                                          setState(() {
 
+                                          });
                                         });
-                                      });
-                                    },
-                                  ),
-                                  SliverList(
-                                    delegate: SliverChildBuilderDelegate(
-                                            (BuildContext context, int index) {
-                                          return ListTile(title: Text('Item $index'));
-                                        },
-                                        childCount: items.length
+                                      },
                                     ),
-                                  ),
-                                ],
+                                    SliverList(
+                                      delegate: SliverChildBuilderDelegate(
+                                              (BuildContext context, int index) {
+                                            return ListTile(
+                                                title: Text(
+                                                    'Item $index',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 60
+                                                  ),
+                                                )
+                                            );
+                                          },
+                                          childCount: items.length
+                                      ),
+                                    ),
+                                    SliverToBoxAdapter(
+                                      child: SliverScrollListenerDebounce(
+                                        notifyOnce: true,
+                                        onScrollEnd: (double percent) {
+                                          // 加载下一页
+                                          Future.delayed(Duration(seconds: 1), () {
+                                            if (currentPageNumDown < pageAmount) {
+                                              currentPageNumDown++;
+                                              for(int i=0; i<pageSize; i++) {
+                                                items.add(1);
+                                              }
+                                              setState(() {
+
+                                              });
+                                            } else {
+                                              print("到底了");
+                                            }
+                                          });
+                                        },
+                                        child: Container(
+                                          color: Colors.lightBlue,
+                                          height: 100,
+                                          child: Center(
+                                            child: Text("$currentPageNumDown / $pageAmount",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 60
+                                            )),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           )

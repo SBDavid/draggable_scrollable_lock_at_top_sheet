@@ -19,7 +19,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  draggable_scrollable_lock_at_top_sheet: ^1.0.0
+  draggable_scrollable_lock_at_top_sheet:
+    path: ../
+  flutter_sliver_tracker: ^2.0.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
