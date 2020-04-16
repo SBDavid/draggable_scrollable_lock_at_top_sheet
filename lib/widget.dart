@@ -513,9 +513,6 @@ class _DraggableScrollableSheetScrollPosition
 
   @override
   void applyUserOffset(double delta) {
-
-    print("listShouldScroll:$listShouldScroll extent.isAtMin:${extent.isAtMin} extent.isAtMax:${extent.isAtMax} delta:$delta");
-
     if (!listShouldScroll &&
         (!(extent.isAtMin || extent.isAtMax) ||
             (extent.isAtMin && delta < 0) ||
@@ -531,11 +528,9 @@ class _DraggableScrollableSheetScrollPosition
   @override
   void goBallistic(double velocity) {
 
-    print("goBallistic");
-
     if (velocity == 0.0 ||
         (velocity < 0.0 && listShouldScroll) ||
-        (velocity > 0.0 && extent.isAtMax)) {
+        (velocity > 0.0 && extent.isAtMax) || extent.isAtMin) {
       super.goBallistic(velocity);
       return;
     }

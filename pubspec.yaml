@@ -1,6 +1,6 @@
 name: draggable_scrollable_lock_at_top_sheet
 description: An enhanced version of origial DraggableScrollableSheet whick will stay at maxExtent whild refreshing. And draggable area is expanded to whole panel other than ScrollView.
-version: 1.0.1
+version: 1.0.2
 author: DavidTang <billl89g@gmail.com>
 homepage: https://github.com/SBDavid/draggable_scrollable_lock_at_top_sheet
 

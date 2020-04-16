@@ -32,10 +32,10 @@ class _MyHomePageState extends State<MyHomePage> {
   // 导航栏颜色
   Color appBarColor = Colors.blue.withOpacity(0);
   // 当前页码
-  int currentPageNumUP = 3;
-  int currentPageNumDown = 3;
+  int currentPageNumUP = 10;
+  int currentPageNumDown = 10;
   int pageSize = 10;
-  int pageAmount = 5;
+  int pageAmount = 20;
   static const double PIC_HEIGHT = 200;
   // 列表项
   List<int> items;
@@ -72,6 +72,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
                 return NotificationListener(
                   onNotification: (Notification notification) {
+                    print("notification $notification");
                     if (notification is DraggableScrollableLockAtTopNotification) {
                       // 调整appbar颜色
                       appBarColor = appBarColor.withAlpha(((notification.extent-notification.minExtent)/(notification.maxExtent - notification.minExtent) * 255).ceil());
